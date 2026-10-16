@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Foundations of Entrepreneurship – MCQ Practice</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--card2:#273449;--text:#e2e8f0;--muted:#94a3b8;--accent:#6366f1;--ok:#22c55e;--bad:#ef4444;--line:#334155}
+  @media (prefers-color-scheme: light){:root{--bg:#f1f5f9;--card:#fff;--card2:#f1f5f9;--text:#0f172a;--muted:#64748b;--line:#e2e8f0}}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+  .wrap{max-width:760px;margin:0 auto;padding:16px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0 16px}
+  h1{font-size:1.25rem;margin:0}
+  h2{margin:0 0 4px;font-size:1.1rem}
+  .sub{color:var(--muted);font-size:.9rem}
+  button{font:inherit;cursor:pointer}
+  .icon-btn{background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+  .week{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;text-align:left;color:var(--text);transition:.15s}
+  .week:hover{transform:translateY(-2px);border-color:var(--accent)}
+  .week b{display:block;font-size:1.05rem}
+  .week span{display:block;color:var(--muted);font-size:.82rem;margin:2px 0 8px}
+  .best{font-size:.8rem;color:var(--ok)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px}
+  .bar{height:8px;background:var(--card2);border-radius:99px;overflow:hidden;margin:10px 0 16px}
+  .bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
+  .meta{display:flex;justify-content:space-between;color:var(--muted);font-size:.85rem}
+  .q{font-size:1.1rem;font-weight:600;margin:6px 0 14px}
+  .opt{display:flex;gap:10px;width:100%;text-align:left;background:var(--card2);color:var(--text);border:2px solid transparent;border-radius:12px;padding:12px 14px;margin:8px 0;transition:.12s}
+  .opt:hover:not(:disabled){border-color:var(--accent)}
+  .opt .l{font-weight:700;color:var(--muted)}
+  .opt.correct{background:rgba(34,197,94,.18);border-color:var(--ok)}
+  .opt.wrong{background:rgba(239,68,68,.18);border-color:var(--bad);animation:shake .35s}
+  .opt:disabled{cursor:default}
+  @keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+  .actions{display:flex;gap:10px;justify-content:space-between;margin-top:14px;flex-wrap:wrap}
+  .primary{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:10px 18px;font-weight:600}
+  .ghost{background:transparent;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 18px}
+  .primary:disabled{opacity:.4;cursor:not-allowed}
+  .score{font-size:3rem;font-weight:800;text-align:center;margin:8px 0}
+  .review{margin-top:14px}
+  .rv{border-left:4px solid var(--line);padding:8px 12px;margin:10px 0;background:var(--card2);border-radius:8px;font-size:.92rem}
+  .rv.ok{border-color:var(--ok)}.rv.no{border-color:var(--bad)}
+  .rv small{color:var(--muted);display:block}
+  label.sw{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:.9rem;margin:0 0 14px}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>🚀 Foundations of Entrepreneurship</h1>
+      <div class="sub">Week-wise MCQ practice · 12 weeks · 180 questions</div>
+    </div>
+    <button class="icon-btn" id="mute" title="Toggle sound">🔊</button>
+  </header>
+
+  <section id="home">
+    <label class="sw"><input type="checkbox" id="shuffle"> Shuffle questions &amp; options</label>
+    <div class="grid" id="weeks"></div>
+  </section>
+
+  <section id="quiz" class="hidden">
+    <div class="card">
+      <div class="meta"><span id="wk"></span><span id="pos"></span></div>
+      <div class="bar"><i id="prog"></i></div>
+      <div class="q" id="qtext"></div>
+      <div id="opts"></div>
+      <div class="actions">
+        <button class="ghost" id="quit">← All weeks</button>
+        <button class="primary" id="next" disabled>Next →</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="result" class="hidden">
+    <div class="card">
+      <h2 id="rtitle"></h2>
+      <div class="score" id="rscore"></div>
+      <div class="sub" id="rmsg" style="text-align:center"></div>
+      <div class="actions" style="justify-content:center">
+        <button class="ghost" id="home2">← All weeks</button>
+        <button class="primary" id="retry">Retry</button>
+      </div>
+      <div class="review" id="review"></div>
+    </div>
+  </section>
+</div>
+
+<script src="questions.js"></script>
+<script>
+(function(){
+  // ---------- Sound (Web Audio, no files needed) ----------
+  var ctx = null, muted = false;
+  try { muted = localStorage.getItem('mcq_muted') === '1'; } catch(e){}
+  function ac(){
+    if(!ctx){ var C = window.AudioContext || window.webkitAudioContext; if(C) ctx = new C(); }
+    if(ctx && ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  }
+  function tone(freq, start, dur, type, vol){
+    var a = ac(); if(!a) return;
+    var o = a.createOscillator(), g = a.createGain();
+    o.type = type; o.frequency.value = freq;
+    var t = a.currentTime + start;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(a.destination);
+    o.start(t); o.stop(t + dur + 0.05);
+  }
+  function playCorrect(){ if(muted) return; tone(660,0,.14,'sine',.25); tone(880,.12,.14,'sine',.25); tone(1320,.24,.28,'sine',.22); }
+  function playWrong(){ if(muted) return; tone(220,0,.18,'sawtooth',.18); tone(160,.16,.32,'sawtooth',.18); }
+  function playFinish(){ if(muted) return; [523,659,784,1047].forEach(function(f,i){ tone(f,i*.13,.22,'triangle',.22); }); }
+
+  var muteBtn = document.getElementById('mute');
+  function paintMute(){ muteBtn.textContent = muted ? '🔇' : '🔊'; }
+  paintMute();
+  muteBtn.onclick = function(){
+    muted = !muted; paintMute();
+    try { localStorage.setItem('mcq_muted', muted ? '1' : '0'); } catch(e){}
+    if(!muted) playCorrect();
+  };
+
+  // ---------- Helpers ----------
+  var $ = function(id){ return document.getElementById(id); };
+  var LET = ['A','B','C','D'];
+  function shuffle(a){ a = a.slice(); for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+  function show(id){ ['home','quiz','result'].forEach(function(s){ $(s).classList.toggle('hidden', s!==id); }); window.scrollTo(0,0); }
+  function getBest(w){ try { return localStorage.getItem('mcq_best_'+w); } catch(e){ return null; } }
+  function setBest(w, s){ try { var b = getBest(w); if(b===null || s > +b) localStorage.setItem('mcq_best_'+w, s); } catch(e){} }
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+  // ---------- Home ----------
+  function renderHome(){
+    var html = '';
+    Object.keys(window.QUIZ).forEach(function(k){
+      var w = window.QUIZ[k], b = getBest(k);
+      html += '<button class="week" data-w="'+k+'"><b>'+esc(w.title)+'</b><span>'+esc(w.topic)+'</span>' +
+              '<div class="best">'+(b!==null ? '🏆 Best: '+b+'/'+w.qs.length : w.qs.length+' questions')+'</div></button>';
+    });
+    var total = 0; Object.keys(window.QUIZ).forEach(function(k){ total += window.QUIZ[k].qs.length; });
+    var ba = getBest('all');
+    html = '<button class="week all" data-w="all" style="grid-column:1/-1;border-color:var(--accent)"><b>🎯 All Weeks – Full Test</b><span>Weeks 1–12 combined</span>' +
+           '<div class="best">'+(ba!==null ? '🏆 Best: '+ba+'/'+total : total+' questions')+'</div></button>' + html;
+    $('weeks').innerHTML = html;
+    Array.prototype.forEach.call(document.querySelectorAll('.week'), function(el){
+      el.onclick = function(){ start(el.getAttribute('data-w')); };
+    });
+    show('home');
+  }
+
+  // ---------- Quiz ----------
+  var S = null;
+  function start(w){
+    ac(); // unlock audio on user gesture
+    var data, doShuffle = $('shuffle').checked;
+    if(w === 'all'){
+      var allQs = []; Object.keys(window.QUIZ).forEach(function(k){ allQs = allQs.concat(window.QUIZ[k].qs); });
+      data = { title: 'All Weeks', topic: 'Full test · Weeks 1–12', qs: allQs };
+    } else data = window.QUIZ[w];
+    var items = data.qs.map(function(q){
+      var opts = q[1].map(function(t,i){ return {t:t, ok:i===q[2]}; });
+      return { q:q[0], opts: doShuffle ? shuffle(opts) : opts };
+    });
+    if(doShuffle) items = shuffle(items);
+    S = { w:w, data:data, items:items, i:0, score:0, answers:[], locked:false };
+    show('quiz'); renderQ();
+  }
+
+  function renderQ(){
+    var it = S.items[S.i], n = S.items.length;
+    $('wk').textContent = S.data.title + ' · ' + S.data.topic;
+    $('pos').textContent = (S.i+1) + ' / ' + n + ' · Score ' + S.score;
+    $('prog').style.width = (S.i / n * 100) + '%';
+    $('qtext').textContent = it.q;
+    $('next').disabled = true;
+    $('next').textContent = S.i === n-1 ? 'Finish ✓' : 'Next →';
+    S.locked = false;
+    var box = $('opts'); box.innerHTML = '';
+    it.opts.forEach(function(o, idx){
+      var b = document.createElement('button');
+      b.className = 'opt';
+      b.innerHTML = '<span class="l">'+LET[idx]+'.</span><span>'+esc(o.t)+'</span>';
+      b.onclick = function(){ pick(idx); };
+      box.appendChild(b);
+    });
+  }
+
+  function pick(idx){
+    if(S.locked) return; S.locked = true;
+    var it = S.items[S.i], btns = $('opts').children, ok = it.opts[idx].ok;
+    for(var k=0;k<btns.length;k++){
+      btns[k].disabled = true;
+      if(it.opts[k].ok) btns[k].classList.add('correct');
+    }
+    if(ok){ S.score++; playCorrect(); } else { btns[idx].classList.add('wrong'); playWrong(); }
+    S.answers.push({ q:it.q, chosen:it.opts[idx].t, correct:it.opts.filter(function(o){return o.ok;})[0].t, ok:ok });
+    $('pos').textContent = (S.i+1) + ' / ' + S.items.length + ' · Score ' + S.score;
+    $('next').disabled = false;
+  }
+
+  $('next').onclick = function(){
+    if(S.i < S.items.length-1){ S.i++; renderQ(); } else finish();
+  };
+  $('quit').onclick = renderHome;
+  $('home2').onclick = renderHome;
+  $('retry').onclick = function(){ start(S.w); };
+
+  function finish(){
+    var n = S.items.length, pct = Math.round(S.score/n*100);
+    setBest(S.w, S.score);
+    $('rtitle').textContent = S.data.title + ' – Results';
+    $('rscore').textContent = S.score + ' / ' + n;
+    $('rmsg').textContent = pct + '% · ' + (pct>=90?'Outstanding! 🎉':pct>=70?'Great job! 👏':pct>=50?'Good effort, keep practising 💪':'Review the lectures and try again 📚');
+    $('review').innerHTML = S.answers.map(function(a,i){
+      return '<div class="rv '+(a.ok?'ok':'no')+'"><b>'+(i+1)+'. '+esc(a.q)+'</b>' +
+        (a.ok ? '<small>✅ '+esc(a.correct)+'</small>' : '<small>❌ Your answer: '+esc(a.chosen)+'</small><small>✅ Correct: '+esc(a.correct)+'</small>') + '</div>';
+    }).join('');
+    show('result'); playFinish();
+  }
+
+  // Keyboard: A-D / 1-4 to answer, Enter for next
+  document.addEventListener('keydown', function(e){
+    if($('quiz').classList.contains('hidden')) return;
+    var k = e.key.toLowerCase(), m = {a:0,b:1,c:2,d:3,'1':0,'2':1,'3':2,'4':3};
+    if(k in m){ pick(m[k]); }
+    else if(k==='enter' && !$('next').disabled){ $('next').click(); }
+  });
+
+  renderHome();
+})();
+</script>
+</body>
+</html>
