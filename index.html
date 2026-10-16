@@ -30,7 +30,10 @@
   .opt{display:flex;gap:10px;width:100%;text-align:left;background:var(--card2);color:var(--text);border:2px solid transparent;border-radius:12px;padding:12px 14px;margin:8px 0;transition:.12s}
   .opt:hover:not(:disabled){border-color:var(--accent)}
   .opt .l{font-weight:700;color:var(--muted)}
-  .opt.correct{background:rgba(34,197,94,.18);border-color:var(--ok)}
+  .opt.correct{background:rgba(34,197,94,.30);border-color:var(--ok);box-shadow:0 0 0 3px rgba(34,197,94,.25)}
+  .opt .ic{margin-left:auto;font-weight:800}
+  .opt.correct .ic{color:var(--ok)}.opt.wrong .ic{color:var(--bad)}
+  .nav{display:flex;gap:10px}
   .opt.wrong{background:rgba(239,68,68,.18);border-color:var(--bad);animation:shake .35s}
   .opt:disabled{cursor:default}
   @keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
@@ -70,7 +73,10 @@
       <div id="opts"></div>
       <div class="actions">
         <button class="ghost" id="quit">← All weeks</button>
-        <button class="primary" id="next" disabled>Next →</button>
+        <div class="nav">
+          <button class="ghost" id="prev" disabled>← Previous</button>
+          <button class="primary" id="next" disabled>Next →</button>
+        </div>
       </div>
     </div>
   </section>
@@ -166,45 +172,56 @@
       return { q:q[0], opts: doShuffle ? shuffle(opts) : opts };
     });
     if(doShuffle) items = shuffle(items);
-    S = { w:w, data:data, items:items, i:0, score:0, answers:[], locked:false };
+    S = { w:w, data:data, items:items, i:0, score:0, picks:[], locked:false };
     show('quiz'); renderQ();
   }
 
   function renderQ(){
-    var it = S.items[S.i], n = S.items.length;
+    var it = S.items[S.i], n = S.items.length, prev = S.picks[S.i];
     $('wk').textContent = S.data.title + ' · ' + S.data.topic;
     $('pos').textContent = (S.i+1) + ' / ' + n + ' · Score ' + S.score;
     $('prog').style.width = (S.i / n * 100) + '%';
     $('qtext').textContent = it.q;
-    $('next').disabled = true;
+    $('prev').disabled = S.i === 0;
     $('next').textContent = S.i === n-1 ? 'Finish ✓' : 'Next →';
-    S.locked = false;
     var box = $('opts'); box.innerHTML = '';
     it.opts.forEach(function(o, idx){
       var b = document.createElement('button');
       b.className = 'opt';
-      b.innerHTML = '<span class="l">'+LET[idx]+'.</span><span>'+esc(o.t)+'</span>';
+      b.innerHTML = '<span class="l">'+LET[idx]+'.</span><span>'+esc(o.t)+'</span><span class="ic"></span>';
       b.onclick = function(){ pick(idx); };
       box.appendChild(b);
     });
+    if(prev !== undefined){ S.locked = true; reveal(prev); $('next').disabled = false; }
+    else { S.locked = false; $('next').disabled = true; }
+  }
+
+  // Lock options, show the correct one in green, and the chosen wrong one in red
+  function reveal(chosen){
+    var it = S.items[S.i], btns = $('opts').children;
+    for(var k=0;k<btns.length;k++){
+      btns[k].disabled = true;
+      var ic = btns[k].querySelector('.ic');
+      if(it.opts[k].ok){ btns[k].classList.add('correct'); ic.textContent = '✓ Correct'; }
+      else if(k === chosen){ btns[k].classList.add('wrong'); ic.textContent = '✗'; }
+    }
   }
 
   function pick(idx){
-    if(S.locked) return; S.locked = true;
-    var it = S.items[S.i], btns = $('opts').children, ok = it.opts[idx].ok;
-    for(var k=0;k<btns.length;k++){
-      btns[k].disabled = true;
-      if(it.opts[k].ok) btns[k].classList.add('correct');
-    }
-    if(ok){ S.score++; playCorrect(); } else { btns[idx].classList.add('wrong'); playWrong(); }
-    S.answers.push({ q:it.q, chosen:it.opts[idx].t, correct:it.opts.filter(function(o){return o.ok;})[0].t, ok:ok });
+    if(S.locked || S.picks[S.i] !== undefined) return; S.locked = true;
+    var ok = S.items[S.i].opts[idx].ok;
+    S.picks[S.i] = idx;
+    if(ok){ S.score++; playCorrect(); } else { playWrong(); }
+    reveal(idx);
     $('pos').textContent = (S.i+1) + ' / ' + S.items.length + ' · Score ' + S.score;
     $('next').disabled = false;
   }
 
   $('next').onclick = function(){
+    if(S.picks[S.i] === undefined) return;
     if(S.i < S.items.length-1){ S.i++; renderQ(); } else finish();
   };
+  $('prev').onclick = function(){ if(S.i > 0){ S.i--; renderQ(); } };
   $('quit').onclick = renderHome;
   $('home2').onclick = renderHome;
   $('retry').onclick = function(){ start(S.w); };
@@ -215,9 +232,10 @@
     $('rtitle').textContent = S.data.title + ' – Results';
     $('rscore').textContent = S.score + ' / ' + n;
     $('rmsg').textContent = pct + '% · ' + (pct>=90?'Outstanding! 🎉':pct>=70?'Great job! 👏':pct>=50?'Good effort, keep practising 💪':'Review the lectures and try again 📚');
-    $('review').innerHTML = S.answers.map(function(a,i){
-      return '<div class="rv '+(a.ok?'ok':'no')+'"><b>'+(i+1)+'. '+esc(a.q)+'</b>' +
-        (a.ok ? '<small>✅ '+esc(a.correct)+'</small>' : '<small>❌ Your answer: '+esc(a.chosen)+'</small><small>✅ Correct: '+esc(a.correct)+'</small>') + '</div>';
+    $('review').innerHTML = S.items.map(function(it,i){
+      var ch = S.picks[i], ok = it.opts[ch].ok, cor = it.opts.filter(function(o){return o.ok;})[0].t;
+      return '<div class="rv '+(ok?'ok':'no')+'"><b>'+(i+1)+'. '+esc(it.q)+'</b>' +
+        (ok ? '<small>✅ '+esc(cor)+'</small>' : '<small>❌ Your answer: '+esc(it.opts[ch].t)+'</small><small>✅ Correct: '+esc(cor)+'</small>') + '</div>';
     }).join('');
     show('result'); playFinish();
   }
@@ -227,7 +245,8 @@
     if($('quiz').classList.contains('hidden')) return;
     var k = e.key.toLowerCase(), m = {a:0,b:1,c:2,d:3,'1':0,'2':1,'3':2,'4':3};
     if(k in m){ pick(m[k]); }
-    else if(k==='enter' && !$('next').disabled){ $('next').click(); }
+    else if((k==='enter' || k==='arrowright') && !$('next').disabled){ $('next').click(); }
+    else if(k==='arrowleft' && !$('prev').disabled){ $('prev').click(); }
   });
 
   renderHome();
